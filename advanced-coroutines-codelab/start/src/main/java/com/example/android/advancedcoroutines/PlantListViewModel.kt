@@ -19,8 +19,7 @@ package com.example.android.advancedcoroutines
 import androidx.lifecycle.*
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.ConflatedBroadcastChannel
-import kotlinx.coroutines.flow.asFlow
-import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 /**
@@ -84,8 +83,18 @@ class PlantListViewModel internal constructor(
         // When creating a new ViewModel, clear the grow zone and perform any related udpates
         clearGrowZoneNumber()
 
-        // fetch the full plant list
-        launchDataLoad { plantRepository.tryUpdateRecentPlantsCache() }
+        growZoneChannel.asFlow()
+            .mapLatest { growZone ->
+                _spinner.value = true
+                if (growZone == NoGrowZone) {
+                    plantRepository.tryUpdateRecentPlantsCache()
+                } else {
+                    plantRepository.tryUpdateRecentPlantsForGrowZoneCache(growZone)
+                }
+            }
+            .onCompletion {  _spinner.value = false }
+            .catch { throwable ->  _snackbar.value = throwable.message  }
+            .launchIn(viewModelScope)
     }
 
     /**
@@ -98,6 +107,7 @@ class PlantListViewModel internal constructor(
         growZone.value = GrowZone(num)
         growZoneChannel.offer(GrowZone(num))
 
+        // Supposed to be able to comment this, but then spinner does not go false
         launchDataLoad {
             plantRepository.tryUpdateRecentPlantsForGrowZoneCache(GrowZone(num))
         }
@@ -113,6 +123,7 @@ class PlantListViewModel internal constructor(
         growZone.value = NoGrowZone
         growZoneChannel.offer(NoGrowZone)
 
+        // Supposed to be able to comment this, but then spinner does not go false
         launchDataLoad {
             plantRepository.tryUpdateRecentPlantsCache()
         }
