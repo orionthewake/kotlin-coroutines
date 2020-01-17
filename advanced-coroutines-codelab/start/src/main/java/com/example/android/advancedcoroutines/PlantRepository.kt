@@ -84,7 +84,7 @@ class PlantRepository private constructor(
             }
             .flowOn(defaultDispatcher)
             .conflate()
-    
+
 
     /**
      * Fetch a list of [Plant]s from the database that matches a given [GrowZone].
